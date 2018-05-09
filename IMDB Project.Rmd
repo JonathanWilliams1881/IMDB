@@ -1,0 +1,418 @@
+---
+title: "IMDB Exploration"
+author: "Jonathan Williams"
+date: "April 16, 2018"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+# Introduction
+
+IMDB is one of the most popular movie critique websites in the world today. Users often interact with the site seeking information about the quality of movies they want to watch, both old and new! This dataset gives an idea of the type of information that IMDB sources out to the public. First, let's look at some of the data provided and then narrow down the focus to variables specific to our questions of interest. 
+
+```{r}
+IMDB <- read.csv(file = "//Users//macintosh//Downloads//imdb.csv", header = TRUE)
+head(IMDB[1:12])
+```
+
+### Motivation
+
+##### Why Do Directors Make Movies?
+Before digging into analysis, I wondered about why movies are made in the first place? What is to gain from making a "Blockbuster" movie? The obvious answer is **MONEY!** The highest grossing films of all time reach into the billions. Generating this kind of income, if everyone could be a succesful director, they would do it! However, we know that only a few have the skill and the industry expertise to design the right film to bring in big bucks. I am interested in using the data available to uncover the mystery behind factors that make for successful movies.
+
+## Preliminary Exploratory Analysis
+
+##### Questions of Interest:
+* What effect does the runtime of a movie have on its IMDB ratings?
+* Is there an ideal runtime for a good movie? Does this depend on the genre/year?
+* How do IMDB Ratings predict Oscar nominations/wins?
+
+```{r}
+str(IMDB[3:12])
+```
+
+After examining the structure of the dataset, I selected the following variables to help answer the above questions: **imdbRating**, **duration**, **year**, **nrOfNominations**, **nrOfGenre**. I will begin with some descriptive plots and statistics of Rating, Duration, and Years of the movies. 
+
+```{r}
+# Turn duration into numeric
+IMDB$duration <- as.numeric(IMDB$duration)
+IMDB$year <- as.numeric(IMDB$year)
+
+# Create a variable "time_period" based off of grouped years
+IMDB$time_period <- IMDB$year
+IMDB$time_period[IMDB$time_period <= 1930] <- "Classic"
+IMDB$time_period[IMDB$time_period > 1930 &
+                   IMDB$time_period <= 1970] <- "Oldie"
+IMDB$time_period[IMDB$time_period > 1970 &
+                   IMDB$time_period <= 2000] <- "Current"
+IMDB$time_period[IMDB$time_period > 2000 &
+                   IMDB$time_period <= 2017] <- "New"
+IMDB$time_period <- factor(IMDB$time_period, ordered = TRUE,
+                           levels = c("Classic", "Oldie", "Current", "New"))
+
+# Save original graphical parameters
+opar <- par(no.readonly = TRUE)
+
+# Multi-frame plots
+par(mfrow = c(2,2))
+hist(IMDB$duration, xlim = c(3600, 10800),  breaks = 120, col = "lightblue", border = "green",
+     xlab = "Movie Duration in Seconds", main = "Distribution of Runtimes") # Slightly right-skewed, approx normal
+abline(v = 6114, col = "gray", lty = 2, lwd = 2) 
+
+boxplot(IMDB$duration ~ IMDB$time_period, main = "Movie Runtimes across Time Periods", col = "lightblue",
+        pch = 21, xlab = "Time Period", ylab = "Runtime in Seconds") # More variation in runtime for "Current movies"
+
+hist(IMDB$imdbRating, xlim = c(1,10), breaks = 20, col = "lightblue", border = "green", xlab = "IMDB Rating",
+     main = "Distribution of IMDB Ratings") # slightly left-skewed, approx normal
+abline(v = 6.723, col = "gray", lty = 2, lwd = 2)
+
+boxplot(IMDB$imdbRating ~ IMDB$time_period, main = "IMDB Rating across Time Periods", col = "lightblue",
+        pch = 21, xlab = "Time Period", ylab = "IMDB Rating") # More variation in ratings for "Current movies"
+```
+
+```{r include=FALSE}
+opar
+```
+
+```{r}
+# Descriptive Statistics
+list("Rating" = summary(IMDB$imdbRating), "Runtime" = summary(IMDB$duration))
+```
+
+##### Preliminary Analysis Recap 
+From these graphs we can see that for the most part, movie duration(runtime) centers around a median of 6000 seconds, which is slightly more than one and a half hours long.  One and a half hours seems to be a standard of sorts because it doesn't change over the years. Another intersting note is that as film directors began to experiment with lengthier films in the "Current" era (1970-2000), the variance in IMDB ratings for that era also increases. This could potentially suggest that movie ratings are affected by the runtime of a movie.
+
+In continuation of the analysis it may be suitable to run a linear regression model over either just the "Current" data or over all of the data with the dependent variable being *rating* and the independent variable being *duration*.
+
+### Application of Linear Regression Methods
+I am curious to know more about the relationship between movie duration and imdb rating.  The two variables in this experiment (*imdbRating* and *duration*) are both continuous, so it would be appropriate to use an OLS Regression method to observe their relaitonship, with *imdbRating* as the dependent variable and *duration* as the independent variable.  Of course, along with any linear regression model must come diagnostics, which I will illustrate graphically in addition to the fitted model.
+
+```{r}
+library(car)
+attach(IMDB)
+# Overall Fit
+fit <- lm(formula = imdbRating ~ duration)
+summary(fit) ## Duration is significant, but it explains a very small amount of the variablility in imdbRating. 
+
+scatter.smooth(duration, imdbRating, lpars = list(lty = 2, col ="red"), main = "IMDB Rating by Duration", ylab = "Rating")
+abline(fit$coefficients, col = "blue")
+
+smoothScatter(duration, imdbRating, main = "IMDB Rating by Duration", ylab = "Rating") # High density visualization
+abline(fit$coefficients, col = "blue")
+
+# Checking Model Assumptions 
+plot(fit$residuals, main = "Residual Diagnostic Plot", ylab = "Fit Residuals") # Clear violation of Normality/Homoscedasticity assumptions. Megaphone
+abline(h = 0, col = "green", lty = 2)
+qqPlot(fit$residuals) # Clear violation of Normality assumption
+```
+
+Simple Linear Regression models run based off of the assumptions that the residuals of our model line will be normally distributed around a mean of 0 and also that the observed residual values from the fitted line are independent of changes in values of our predictor variable. In other words, we want to be able to assume that there is no pattern of the distances of the residual values from the fitted line as our predictor variable (duration) varies. Unfortunately, the above graphs are showing that these assumptions are violated as we are observing a classic "megaphone" displacement of the residual values from the fitted line. In many cases, finding an appropriate transformation for the the model can solve this issue of non-normality.  Based upon the nature of the curvature in the data as shown in the Q-Q plot, I will try a log transformation to make a new linear model using the predictor of log(durationg) instead of regular duration. 
+
+```{r}
+# Log Transform
+attach(IMDB)
+logfit <- lm(formula = imdbRating ~ log(duration))
+summary(logfit)
+scatter.smooth(log(duration), imdbRating, lpars = list(col = "red", lty = 2), main = "IMDB Rating by log(Duration)", ylab = "Rating")
+abline(logfit$coefficients, col = "blue")
+
+smoothScatter(log(duration), imdbRating, main = "IMDB Rating by log(Duration)", ylab = "Rating") # High density visualization
+abline(logfit$coefficients, col = "blue")
+
+# Checking Model Assumptions
+plot(logfit$residuals, main = "Residual Diagnostic Plot", ylab = "Fit Residuals")
+abline(h = 0, col = "green", lty = 2)
+qqPlot(logfit$residuals)
+
+detach(IMDB)
+
+```
+
+#### Linear Regression Assumptions Violated
+
+Still, it appears that the data has a strong departure from normality (megaphone phenomenon), which would prove detrimental for inferences obtained from nearly any linear regression or ANOVA model we could form.  If the assumptions had not been violated, I may have continued by using an ANOVA model and prehaps ANCOVA to increase the R-squared values and explain more of the variation in the data. 
+
+For example:
+What is the relationship between movie duration and imdb rating?
+
+One-Way ANOVA (Unbalanced):
+$Rating = B_0 + B_1(Time.Period)$
+
+Do the mean ratings differ for different time periods when controlling for movie duration?
+
+One-Way ANCOVA Full Model:
+$Rating = B_0 + B_1(Duration) + B_2(Time.Period) + B_3(Duration*Time.Period)$
+
+***
+
+I am sure that somewhere, there is an appropriate transformation for our data that will correct for the violated assumptions of normality and homoscedasticity. However, given time constraints and the labor neccesary towards finding an appropriate model, I decided that it would be more efficient to perform a different statistical test and perhaps explore other variables as well.  
+
+My original goal was to examine the relationship between the duration times of movies and their imdbRating. I had to keep an open mind that perhaps imdbRating would make for a more useful predictor variable rather than a response variable.  Almost immediately I turned my focus towards my second question: **"How do IMDB ratings predict Oscar nominations"?** 
+
+I feel this is an important question to address because, as mentioned earlier, the pinnacle of success for any released movie is to make a lot of money, and there is no question that Oscar nominations generate a lot of revenue. **Films nominated for an Oscar enjoy a box office boost, as more fans head to the big screen and the films expand to more theaters. This can be worth tens of millions of dollars!** So the question at hand then becomes: *What factors are good predictors of at least one Oscar nomination for movies?*  
+
+***
+
+## Logistic Regression Motivations
+The major point of my inquiry is whether or not a movie is nominated for an Oscar, and why? Since you can either win or not win an Oscar we see that the outcome is a binary response. This motivated me to pursue a Logistic Regression Model based off of multiple predictor variables that would determine, with some level of accuracy, the likelihood of a certain movie being nominated for an Oscar.
+
+### Application of Logistic Regression Methods
+The formula for our model is...
+
+Binary Logistic Regression Model:
+$log(\frac{P(Nominated)}{1 - P(Nominated)}) = B_0 + B_iX_{ji}$ 
+
+where: j = # of the predictor from j to m, and i = ith unit change in the predictor
+
+This model can be instrumental in answering a question mentioned before in our Preliminary Exploratory Analysis: "How do IMDB Ratings predict Oscar nominations/wins?". In this case, we are using nominations as our response variable under the reasoning that a movie cannot win an Oscar until it is first nominated. So we want to find a general linearized model that can help us predict Oscar nominations.
+
+The great thing about Logistic Regression and why it is applicable in this situation is that it does not depend on the normality assumption. This is crucial for the data that we are working with, because, as our attempt on a linear regression model showed, the data shows many departures from normality.  Logistic Regression accounts for this issue and is still a very powerful statistical classification tool that will prove useful to us in this project.
+
+Lets have another look at our original data:
+
+```{r}
+head(IMDB[3:12], 12)
+summary(IMDB$nrOfNominations)
+```
+
+In order to run Logistic Regression we need a categorical variable. In particular, it needs to be a binary variable taking one of two possible values. We can clearly see from the summary statistics and a glance at the data that the **nrOfNominations** column is continuous and varies much differently than from 0 to 1.  This problem can be fixed by factoring the **nrOfNominations** variable.  Within the context of our problem, we are not interested in how many nominations a film receives, but rather whether it receives a nomination or not.  So, to prep the data I created a new variable, **ynNominations**, based off of **nrOfNominations**, and set its values to 0 and 1 depending on whether a nomination was received or not.  
+
+```{r}
+# Data prep for Logistic Regression
+table(IMDB$nrOfNominations)
+IMDB$ynNominations[IMDB$nrOfNominations >= 1] <- 1
+IMDB$ynNominations[IMDB$nrOfNominations == 0] <- 0
+IMDB$ynNominations <- factor(IMDB$ynNominations,
+                             levels = c(0,1), labels = c("No", "Yes"))
+table(IMDB$ynNominations)
+```
+
+As you can see, the **nrOfNominations** variable has been recoded to a binary response variable called **ynNominations**.
+
+##### Which variables are significant in predicting Oscar nominations?
+
+```{r}
+## Logistic Regression
+attach(IMDB)
+oscar_nomination <- glm(formula = ynNominations ~ imdbRating + ratingCount + duration + year + nrOfPhotos + nrOfNewsArticles + nrOfUserReviews + nrOfGenre, family = binomial(), data = IMDB)
+summary(oscar_nomination) # ratingCount variable not significant
+```
+
+##### Our output for the full Logistic Regression model suggests that all variables are significant at the 99% significance level except for **ratingCount**. As a result we choose to fit a reduced model dropping insignificant variables...
+
+```{r}
+oscar_nomination_reduced <- glm(formula = ynNominations ~ imdbRating + duration + year + nrOfPhotos + nrOfNewsArticles + nrOfUserReviews + nrOfGenre, family = binomial(), data = IMDB)
+summary(oscar_nomination_reduced) ## The reduced model shows significance in every variable.
+```
+
+
+The reduced model shows significance in every variable which indicates that each of the variables have an affect on the outcome of nominations. We also note that there is no drop in the null deviance between the full and reduced models. Let's compare them with an ANOVA test based upon a Chi-squared distribution.
+
+
+```{r}
+# Comparison of full to reduced model
+anova(oscar_nomination_reduced, oscar_nomination, test = "Chisq") # Insignificant change for the reduced model. Reduced fits just as well, keep reduced
+```
+
+We observe an insignificant change for the reduced model so we can assume that it fits the data just as well as the full model. With that being said, it makes more sense to use the reduced model with less explanatory variables because simpler is better.
+
+Now that we have a model we want to examine the determined coefficients and manipulate the model with some algebra to make it easier to interpret in layman's terms. As it is, our model looks like this...
+
+#### Log Odds Equation
+
+$log(\frac{P(Nomination)}{1 - P(Nomination)}) = -4.632 + 7.670^{-1}(imdbRating) + 1.476^{-2}(duration.min) + 1.926^{-2}(year) + 1.796^{-2}(nrOfPhotos) + 2.811^{-4}(nrOfNewsArticles) + 2.883^{-3}(nrOfUserReviews) + 1.208^{-1}(nrOfGenre)$
+
+We read this equation as the log of the odds of Oscar nomination based on the effect of the various predictor variables. But this is difficult to interpret. We would much rather our model be interpreted in terms of the probability of Oscar nomination.  Thus, we first exponentiate our model and then apply algebra to arrive at a model of the probability of Oscar nomination.  I have provided the corresponding equations and coefficient terms below. 
+
+```{r}
+coef(oscar_nomination_reduced) # Log Odds Equation
+exp(coef(oscar_nomination_reduced)) # Odds Equation
+```
+
+#### Odds Equation
+
+$\frac{P(Nomination)}{1 - P(Nomination)} = {7.311}^{-23} * {2.249}^{imdbRating} * {1.000}^{duration.min} * {1.024}^{year} * {1.019}^{nrOfPhotos} * {1.000}^{nrOfNewsArticles} * {1.003}^{nrOfUserReviews} * {1.160}^{nrOfGenre}$
+
+#### Probability Equation
+
+$P(Nomination) = \frac{{7.311}^{-23} * {2.249}^{imdbRating} * {1.000}^{duration.min} * {1.024}^{year} * {1.019}^{nrOfPhotos} * {1.000}^{nrOfNewsArticles} * {1.003}^{nrOfUserReviews} * {1.160}^{nrOfGenre}}{1 + {7.311}^{-23} * {2.249}^{imdbRating} * {1.000}^{duration.min} * {1.024}^{year} * {1.019}^{nrOfPhotos} * {1.000}^{nrOfNewsArticles} * {1.003}^{nrOfUserReviews} * {1.160}^{nrOfGenre}}$
+
+
+#### 95% Confidence Intervals and Diagnostic Plot
+
+```{r}
+exp(confint(oscar_nomination_reduced)) # Probability Equation
+## Diagnostic Plot
+
+plot(predict(oscar_nomination_reduced, type = "response"),
+     residuals(oscar_nomination_reduced, type = "deviance"), main = "Logistic Diagnostic Plot", ylab = "Residuals", xlab = "Prediction")
+```
+
+As for the **duration** variable, I figured it may also be more understandable to modify duration time from seconds to minutes, a more common standard for keeping time. So I created another variable **duration.min** which is just the duration time divided by 60 in order to convert every value from seconds to minutes.
+
+##### Create a minutes variable.
+
+```{r}
+## Modify Regression for duration.min
+IMDB$duration.min <- IMDB$duration/60
+IMDB$duration.min <- as.numeric(IMDB$duration.min)
+summary(IMDB$duration.min)
+```
+
+Now I repeat the procedures from before on the new data with **duration.min** instead of **duration**.
+
+```{r}
+oscar_nomination2 <- glm(formula = ynNominations ~ imdbRating + ratingCount + duration.min + year + nrOfPhotos + nrOfNewsArticles + nrOfUserReviews + nrOfGenre, family = binomial(), data = IMDB)
+summary(oscar_nomination2) # Full Model
+
+oscar_nomination2_reduced <- glm(formula = ynNominations ~ imdbRating + duration.min + year + nrOfPhotos + nrOfNewsArticles + nrOfUserReviews + nrOfGenre, family = binomial(), data = IMDB)
+summary(oscar_nomination_reduced) # Reduced Model
+
+exp(coef(oscar_nomination2_reduced)) # Coefficients for the odds of winning an Oscar
+exp(confint(oscar_nomination2_reduced)) # CIs for the coeffiicents
+detach(IMDB)
+```
+
+## Logistic Regression Conclusions
+From our logistic regression model we conclude that there are seven significant predictor variables for Oscar nominations. They are shown in the output above. One variable that stood out a lot was the **imdbRating** itself! *Unit increases in the rating variable causes the probability of an Oscar nomination to double, holding all other factors constant at their means.* Most of the other factors have a much smaller multiplicative effect than **imdbRating**.
+
+## A Closer Look: imdbRating
+Holding all other variables constant at their means, I would like to take a closer look at the imdbRating variable. Lets examine the effect of imdbRating on Oscar nominations working by itself.
+
+```{r}
+
+# Predictive Models of probability
+attach(IMDB)
+test_imdbRating <- data.frame(imdbRating = c(0,1,2,3,4,5,6,7,8,9,10),
+                              duration.min = mean(duration.min, na.rm = TRUE),
+                              year = mean(year, na.rm = TRUE),
+                              nrOfPhotos = mean(nrOfPhotos),
+                              nrOfNewsArticles = mean(nrOfNewsArticles),
+                              nrOfUserReviews = mean(nrOfUserReviews),
+                              nrOfGenre = mean(nrOfGenre))
+
+test_imdbRating$prob <- predict(oscar_nomination2_reduced, newdata = test_imdbRating, type = "response")
+test_imdbRating
+detach(IMDB)
+```
+
+This data shows us how the probability doubles for each unit increase in **imdbRating**. This could suggest that imdbRating is not only significant, but a reliable predictor of Oscar nominations for movies. Analysts may be encouraged by this model to look to IMDB ratings as a reliable source to examine the success of their films.
+
+## Testing Our Model
+The previous models we ran were over the entire dataset. Of course, no model can really be determined as accurate until it can predict over random samples of the data provided and still capture many of the anticipated values.  I now repeat procedures after splitting the data into test and training data.
+
+```{r}
+# Making a 60% training and 40% validation dataset
+set.seed(1234)
+train <- sample(nrow(IMDB), .6*nrow(IMDB))
+IMDB.train <- IMDB[train, ]
+IMDB.validate <- IMDB[-train, ]
+
+# Check tabular values of nominations for each dataset
+table(IMDB.train$ynNominations)
+table(IMDB.validate$ynNominations)
+
+# Use Logistic Regression model on the training data
+oscar_nomination2.train <- glm(formula = ynNominations ~ imdbRating + ratingCount + duration.min + year + nrOfPhotos + nrOfNewsArticles + nrOfUserReviews + nrOfGenre, family = binomial(), data = IMDB.train)
+summary(oscar_nomination2.train) # ratingCount insignificant, drop from model
+
+oscar_nomination2_reduced.train <- glm(formula = ynNominations ~ imdbRating + duration.min + year + nrOfPhotos + nrOfNewsArticles + nrOfUserReviews + nrOfGenre, family = binomial(), data = IMDB.train)
+summary(oscar_nomination2_reduced.train)
+
+# Reduced and Full model comparison
+anova(oscar_nomination2_reduced.train, oscar_nomination2.train, test = "Chisq") # Reduced is just as good as the full model, use reduced.
+
+# Obtain model coefficients
+coef(oscar_nomination2_reduced.train) # Log Odds
+exp(coef(oscar_nomination2_reduced.train)) # Odds
+
+# Obtain CIs for coefficients
+exp(confint(oscar_nomination2_reduced.train))
+```
+
+Equations from the model:
+
+#### Log Odds Equation
+
+$log(\frac{P(Nomination)}{1 - P(Nomination)}) = -4.672 + 7.349^{-1}(imdbRating) + 1.339^{-2}(duration.min) + 1.967^{-2}(year) + 1.869^{-2}(nrOfPhotos) + 3.326^{-4}(nrOfNewsArticles) + 2.889^{-3}(nrOfUserReviews) + 8.731^{-2}(nrOfGenre)$
+
+#### Odds Equation (exponentiated values)
+
+$\frac{P(Nomination)}{1 - P(Nomination)} = {5.148}^{-21} * {2.085}^{imdbRating} * {1.013}^{duration.min} * {1.020}^{year} * {1.019}^{nrOfPhotos} * {1.000}^{nrOfNewsArticles} * {1.003}^{nrOfUserReviews} * {1.091}^{nrOfGenre}$
+
+#### Probability Equation
+
+$P(Nomination) = \frac{{5.148}^{-21} * {2.085}^{imdbRating} * {1.013}^{duration.min} * {1.020}^{year} * {1.019}^{nrOfPhotos} * {1.000}^{nrOfNewsArticles} * {1.003}^{nrOfUserReviews} * {1.091}^{nrOfGenre}}{1 + {5.148}^{-21} * {2.085}^{imdbRating} * {1.013}^{duration.min} * {1.020}^{year} * {1.019}^{nrOfPhotos} * {1.000}^{nrOfNewsArticles} * {1.003}^{nrOfUserReviews} * {1.091}^{nrOfGenre}}$
+
+## Logistic Regression Conclusions (Training)
+We have now obtained a model based upon a training dataset. Let's examine it's performance on our test data.
+
+```{r}
+# Predictive Models of probability
+attach(IMDB.train)
+test_imdbRating.train <- data.frame(imdbRating = c(0,1,2,3,4,5,6,7,8,9,10),
+                              duration.min = mean(duration.min, na.rm = TRUE),
+                              year = mean(year, na.rm = TRUE),
+                              nrOfPhotos = mean(nrOfPhotos),
+                              nrOfNewsArticles = mean(nrOfNewsArticles),
+                              nrOfUserReviews = mean(nrOfUserReviews),
+                              nrOfGenre = mean(nrOfGenre))
+
+test_imdbRating.train$prob <- predict(oscar_nomination2_reduced.train, newdata = test_imdbRating.train, type = "response")
+test_imdbRating.train
+detach(IMDB.train)
+```
+
+What's going on here is that based on our training dataset, our logistic regression model is making predictions of the estimated probability of winning an Oscar nomination given a certain value for **imdbRating**. The model suggests that for an **imdbRating** of 0-4, chances are very slim for getting an Oscar nomination with probabilities lower than 10%. For values between 5-7 for **imdbRating** we see the probability rise from nerly 20% to 50%. At this point, I would consider the odds of nomination pretty good, nearing the odds of a coin flip. For an **imdbRating** of 8-10, a movie is basically a shoe-in for the Oscar nod with probabilities ranging from about 67% to 90% chances.
+
+Let's examine this relationship graphically...
+
+```{r}
+plot(test_imdbRating.train$imdbRating, test_imdbRating.train$prob,
+     xlab = "IMDB Rating", ylab = "Probability of Nomination", type = "o", pch = 19, col = "green", fg = "blue",
+     main = "Oscar Nomination Likelihood", yaxp = c(0.0, 1, 2), ylim = c(0,1))
+abline(h = 0, col = "black", lty = 2)
+abline(h = 1, col = "black", lty = 2)
+abline(h = .5, col = "gray", lty = 2)
+text(test_imdbRating.train$imdbRating, test_imdbRating.train$prob, labels = round(test_imdbRating.train$prob, 2), cex = .7)
+```
+
+This graph gives a general idea of how the model works. It takes as inputs the predictor variables from the model and generates estimates of the probability of an Oscar nomination based upon all predictor values (in this case only IMDB Rating). Our next step is to to test the model on the validation dataset and observe how well the model predicts the outcome of any given movie it comes across based upon its characteristics (predictors).
+
+##### Model Performance Test
+
+```{r}
+# True Classification vs. Model classification
+prob <- predict(oscar_nomination2_reduced.train, IMDB.validate, type = "response") # Predicts probability of Oscar nomination with the given model used over the data in the validation dataset
+head(prob)
+
+logit.pred <- factor(prob > .45, levels = c(FALSE, TRUE), labels = c("No", "Yes")) # Takes all observations randomly chosen from the validation sample and categorizes them as greater than or less than 45% chance of Oscar nomination based on the information given in the validation dataset. 
+head(logit.pred)
+
+logit.performance <- table(IMDB.validate$ynNominations, logit.pred, dnn = c("Actual", "Predicted")) # Calculates the accuracy of predictions on the actual values.
+logit.performance 
+library(vcd)
+lbls <- round(prop.table(logit.performance), 2)
+mosaic(logit.performance, shade = TRUE, legend = F, main = "Model Performance Table", pop = FALSE) # False Positive rate is 12%. False Negative rate is 28.6%. Accuracy of the model in prediction of Oscar Nominations is 75%
+labeling_cells(text = lbls, margin = 0, col = "white") (logit.performance)
+
+```
+
+
+Confusion Matrix Element | Percentage
+-------------------------|-----------
+Accuracy | 75%
+Misclassification Rate | 25%
+True Positive Rate | 70%
+False Positive Rate  | 21%
+Specificity | 78%
+Precision | 72%
+Prevalence | 44%
+
+
+## Conclusions
+Based upon our results, we find that our predictive model is relatively accurate for Oscar nominations. **Our performance table showed that 75% of the predictions were correct! The model is better at detecting which movies will be nominated for Oscars (21% False Positive) than it is at detecting which movies will not be nominated (29.5% False Negative).**  If I were to continue with the project with more time, I would note that just because models are statistically significant, doesn't necessarily make them practically significant. There are some variables in our model that increase the probability of winning an Oscar by a meaningless multiplicative value of 1. Practically speaking, they don't really influence the probability of Oscar nomination by much, if anything at all. Some motivations for further study would be to drop these variables that are significant, but hold no practical application.  This may eliminate noise from our model and lead to more confidence in our predictions of Oscar nominations.  
+
+As a special note to film directors, it is strongly suggested that they check out IMDB's website for reviews when they want to know about the likelihood of their movie winning an Oscar!! 
