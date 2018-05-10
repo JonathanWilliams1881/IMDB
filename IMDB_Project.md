@@ -105,7 +105,7 @@ boxplot(IMDB$imdbRating ~ IMDB$time_period, main = "IMDB Rating across Time Peri
         pch = 21, xlab = "Time Period", ylab = "IMDB Rating") # More variation in ratings for "Current movies"
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-3-1.png)
+![](/images/Users/macintosh/Desktop/RProjects/IMDB Plot 1.png)
 
 ``` r
 # Descriptive Statistics
