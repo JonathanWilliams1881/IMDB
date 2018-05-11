@@ -170,7 +170,7 @@ smoothScatter(duration, imdbRating, main = "IMDB Rating by Duration", ylab = "Ra
 abline(fit$coefficients, col = "blue")
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-6-2.png)
+![unnamed-chunk-6-2](https://user-images.githubusercontent.com/32421511/39900701-9d4c46e6-5491-11e8-939c-367902fd6e76.png)
 
 ``` r
 # Checking Model Assumptions 
@@ -178,13 +178,13 @@ plot(fit$residuals, main = "Residual Diagnostic Plot", ylab = "Fit Residuals") #
 abline(h = 0, col = "green", lty = 2)
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-6-3.png)
+![unnamed-chunk-6-3](https://user-images.githubusercontent.com/32421511/39900705-a81d9ce6-5491-11e8-875b-1aa81c1e641c.png)
 
 ``` r
 qqPlot(fit$residuals) # Clear violation of Normality assumption
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-6-4.png)
+![unnamed-chunk-6-4](https://user-images.githubusercontent.com/32421511/39900709-b13ba070-5491-11e8-8e3a-d1c607a63dfe.png)
 
 Simple Linear Regression models run based off of the assumptions that the residuals of our model line will be normally distributed around a mean of 0 and also that the observed residual values from the fitted line are independent of changes in values of our predictor variable. In other words, we want to be able to assume that there is no pattern of the distances of the residual values from the fitted line as our predictor variable (duration) varies. Unfortunately, the above graphs are showing that these assumptions are violated as we are observing a classic "megaphone" displacement of the residual values from the fitted line. In many cases, finding an appropriate transformation for the the model can solve this issue of non-normality. Based upon the nature of the curvature in the data as shown in the Q-Q plot, I will try a log transformation to make a new linear model using the predictor of log(durationg) instead of regular duration.
 
@@ -233,14 +233,14 @@ scatter.smooth(log(duration), imdbRating, lpars = list(col = "red", lty = 2), ma
 abline(logfit$coefficients, col = "blue")
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-7-1.png)
+![unnamed-chunk-7-1](https://user-images.githubusercontent.com/32421511/39900715-b94327b6-5491-11e8-9210-c484db9cf27b.png)
 
 ``` r
 smoothScatter(log(duration), imdbRating, main = "IMDB Rating by log(Duration)", ylab = "Rating") # High density visualization
 abline(logfit$coefficients, col = "blue")
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-7-2.png)
+![unnamed-chunk-7-2](https://user-images.githubusercontent.com/32421511/39900719-c0b467f8-5491-11e8-92bc-f3d4b3641a0b.png)
 
 ``` r
 # Checking Model Assumptions
@@ -248,13 +248,13 @@ plot(logfit$residuals, main = "Residual Diagnostic Plot", ylab = "Fit Residuals"
 abline(h = 0, col = "green", lty = 2)
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-7-3.png)
+![unnamed-chunk-7-3](https://user-images.githubusercontent.com/32421511/39900723-c87452f0-5491-11e8-9e72-6dea20d6d3e9.png)
 
 ``` r
 qqPlot(logfit$residuals)
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-7-4.png)
+![unnamed-chunk-7-4](https://user-images.githubusercontent.com/32421511/39900727-d536e96c-5491-11e8-9ca9-26dde376e87c.png)
 
 ``` r
 detach(IMDB)
@@ -548,7 +548,7 @@ plot(predict(oscar_nomination_reduced, type = "response"),
      residuals(oscar_nomination_reduced, type = "deviance"), main = "Logistic Diagnostic Plot", ylab = "Residuals", xlab = "Prediction")
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-14-1.png)
+![unnamed-chunk-14-1](https://user-images.githubusercontent.com/32421511/39900730-dc9d0b50-5491-11e8-8d81-5684e9314455.png)
 
 As for the **duration** variable, I figured it may also be more understandable to modify duration time from seconds to minutes, a more common standard for keeping time. So I created another variable **duration.min** which is just the duration time divided by 60 in order to convert every value from seconds to minutes.
 
@@ -984,7 +984,7 @@ abline(h = .5, col = "gray", lty = 2)
 text(test_imdbRating.train$imdbRating, test_imdbRating.train$prob, labels = round(test_imdbRating.train$prob, 2), cex = .7)
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-20-1.png)
+![unnamed-chunk-20-1](https://user-images.githubusercontent.com/32421511/39900734-e3fb2a8a-5491-11e8-8ae3-1af7d79e163b.png)
 
 This graph gives a general idea of how the model works. It takes as inputs the predictor variables from the model and generates estimates of the probability of an Oscar nomination based upon all predictor values (in this case only IMDB Rating). Our next step is to to test the model on the validation dataset and observe how well the model predicts the outcome of any given movie it comes across based upon its characteristics (predictors).
 
@@ -1030,7 +1030,7 @@ mosaic(logit.performance, shade = TRUE, legend = F, main = "Model Performance Ta
 labeling_cells(text = lbls, margin = 0, col = "white") (logit.performance)
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-21-1.png)
+![unnamed-chunk-21-1](https://user-images.githubusercontent.com/32421511/39900740-ebd51bb2-5491-11e8-8be0-3fc301aa0636.png)
 
 | Confusion Matrix Element | Percentage |
 |--------------------------|------------|
