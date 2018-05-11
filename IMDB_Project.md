@@ -163,7 +163,7 @@ scatter.smooth(duration, imdbRating, lpars = list(lty = 2, col ="red"), main = "
 abline(fit$coefficients, col = "blue")
 ```
 
-![](IMDB_Project_files/figure-markdown_github/unnamed-chunk-6-1.png)
+![unnamed-chunk-6-1](https://user-images.githubusercontent.com/32421511/39900694-90f0efc8-5491-11e8-8322-f669381d2658.png)
 
 ``` r
 smoothScatter(duration, imdbRating, main = "IMDB Rating by Duration", ylab = "Rating") # High density visualization
